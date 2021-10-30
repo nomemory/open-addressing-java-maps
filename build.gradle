@@ -1,0 +1,23 @@
+plugins {
+    id 'java'
+}
+
+group 'org.example'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'net.andreinc:mockneat:0.4.7'
+    implementation 'org.openjdk.jmh:jmh-core:1.33'
+    implementation 'org.jetbrains:annotations:20.1.0'
+    annotationProcessor 'org.openjdk.jmh:jmh-generator-annprocess:1.33'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
+}
+
+test {
+    useJUnitPlatform()
+}
