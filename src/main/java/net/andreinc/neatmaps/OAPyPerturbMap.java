@@ -7,26 +7,36 @@ import java.util.Set;
 
 import static java.lang.String.format;
 
-public class OaMapLP_noMixer<K, V> implements Map<K,V> {
+public class OAPyPerturbMap<K, V> implements Map<K,V> {
 
-    private static final double OA_MAP_LOAD_FACTOR = 0.6;
+    private static final double OA_MAX_LOAD_FACTOR = 0.7;
+    private static final double OA_MIN_LOAD_FACTOR_WITH_MAX_PROBING = 0.5;
     private static final int OA_MAP_CAPACITY_I = 12;
     private static final int OA_MAP_MAX_PROBING = 1<<5;
-    private static final int OA_PERTURB_SHIFT = 6;
+    private static final int OA_PERTURB_SHIFT = 5;
 
     private int size = 0;
     private int tombstones = 0;
     private int cI = OA_MAP_CAPACITY_I;
     private OaEntry<K, V> buckets[] = new OaEntry[1<<OA_MAP_CAPACITY_I];
 
+    public OAPyPerturbMap() {
+    }
+
     // INTERNAL METHODS
 
     private static final int hash32(final Object obj) {
-        return obj.hashCode();
+        int h = obj.hashCode();
+        h ^= h >> 16;
+        h *= 0x3243f6a9;
+        h ^= h >> 16;
+        return h & 0xfffffff;
     }
 
+    private final double loadFactor() {  return ((double) (size+tombstones)) / buckets.length; }
+
     private final boolean shouldGrow() {
-        return ((double) (size+tombstones)) / buckets.length > OA_MAP_LOAD_FACTOR;
+        return loadFactor() > OA_MAX_LOAD_FACTOR;
     }
 
     private final void grow() {
@@ -71,14 +81,19 @@ public class OaMapLP_noMixer<K, V> implements Map<K,V> {
 
     @Override
     public V get(Object key) {
+        if (null==key) {
+            throw new IllegalArgumentException("Map doesn't support null keys");
+        }
         int hash = hash32(key);
         int idx = hash & (buckets.length-1);
         if (null != buckets[idx]) {
             int perturb = hash;
             do {
-                if (buckets[idx].hash == hash && buckets[idx].key.equals(key))
+                if (buckets[idx].hash == hash && key.equals(buckets[idx].key))
                         break;
-                idx++;
+                idx = 5 * idx + 1 + perturb;
+                perturb>>=OA_PERTURB_SHIFT;
+                idx = idx & (buckets.length-1);
                 if (idx == buckets.length) idx = 0;
             } while (null != buckets[idx]);
         }
@@ -92,63 +107,70 @@ public class OaMapLP_noMixer<K, V> implements Map<K,V> {
         int probing = 0;
         int idx = hash & (buckets.length-1);
         if (null != buckets[idx]) {
+            int perturb = hash;
             do {
                 if (buckets[idx].key == null)
                     break;
-                if (buckets[idx].hash == hash && buckets[idx].key.equals(key))
+                if (buckets[idx].hash == hash && key.equals(buckets[idx].key))
                         break;
                 probing++;
-                idx++;
-                if (idx == buckets.length) idx = 0;
+                idx = 5 * idx + 1 + perturb;
+                perturb>>=OA_PERTURB_SHIFT;
+                idx = idx & (buckets.length-1);
             } while (null != buckets[idx]);
         }
         V ret = null;
-        size++;
         if (null==buckets[idx]) {
             buckets[idx] = OaEntry.createEntry(key, value, hash);
+            size++;
         } else {
             ret = buckets[idx].val;
             buckets[idx].key = key;
             buckets[idx].hash = hash;
             buckets[idx].val = value;
         }
-        if (probing>OA_MAP_MAX_PROBING) {
-//            System.out.println("probing: " + probing);
-            grow();
-        }
+//        if (probing>OA_MAP_MAX_PROBING && loadFactor()>OA_MIN_LOAD_FACTOR_WITH_MAX_PROBING) {
+//            grow();
+//        }
         return ret;
     }
 
     @Override
     public V put(K key, V value) {
+        if (null==key) {
+            throw new IllegalArgumentException("Map doesn't support null keys");
+        }
         return put(key, value, hash32(key));
     }
 
     @Override
     public V remove(Object key) {
+        if (null==key) {
+            throw new IllegalArgumentException("Map doesn't support null keys");
+        }
         //TODO shrink
         int hash = hash32(key);
         int idx = hash & (buckets.length-1);
         if (null!=buckets[idx]) {
             int perturb = hash;
             do {
-                if (buckets[idx].key == null)
-                    break;
-                if (buckets[idx].hash == hash && buckets[idx].key.equals(key))
+                if (buckets[idx].hash == hash && key.equals(buckets[idx].key))
                         break;
-                idx++;
-                if (idx == buckets.length) idx = 0;
+                idx = 5 * idx + 1 + perturb;
+                perturb>>=OA_PERTURB_SHIFT;
+                idx = idx & (buckets.length-1);
             } while (null != buckets[idx]);
         }
-        OaEntry<K,V> oldEntry = buckets[idx];
+        V oldVal = null;
         if (null!=buckets[idx]) {
+            oldVal = buckets[idx].val;
             buckets[idx].key = null;
             buckets[idx].val = null;
             buckets[idx].hash = 0;
             tombstones++;
             size--;
         }
-        return oldEntry == null ? null : oldEntry.val;
+        return oldVal;
     }
 
     @Override

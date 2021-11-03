@@ -1,4 +1,4 @@
-package net.andreinc.neatmaps;
+package net.andreinc.neatmaps.ck;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -72,6 +72,17 @@ public class CkooMap<K,V> implements Map<K,V> {
         return hash & 0xfffffff;
     }
 
+    protected static class CkooArray<K,V> {
+        protected CkooEntry<K,V>[] buckets;
+        protected int rndSeed;
+        protected int hash(Object obj) {
+            int hash = obj.hashCode();
+            hash ^= (hash >> 16);
+            hash *= rndSeed;
+            return hash & 0xfffffff;
+        }
+    }
+
     protected static class CkooEntry<K,V> {
         int hash1;
         int hash2;
@@ -111,18 +122,18 @@ public class CkooMap<K,V> implements Map<K,V> {
         // BUCKET 1
         hash = hash1(key);
         idx = hash & (buckets1.length-1);
-        if (buckets1[idx]!=null)
-            if (buckets1[idx].hash1==hash)
-                if(buckets1[idx].key.equals(key))
-                    return buckets1[idx].value;
+        if (buckets1[idx]!=null &&
+                buckets1[idx].hash1==hash &&
+                    buckets1[idx].key.equals(key))
+                        return buckets1[idx].value;
 
         // BUCKET 2
         hash = hash2(key);
         idx = hash & (buckets2.length-1);
-        if (buckets2[idx]!=null)
-            if (buckets2[idx].hash2==hash)
-                if (buckets2[idx].key.equals(key))
-                    return buckets2[idx].value;
+        if (buckets2[idx]!=null &&
+                buckets2[idx].hash2==hash &&
+                    buckets2[idx].key.equals(key))
+                        return buckets2[idx].value;
 
         return stash.get(key);
     }
