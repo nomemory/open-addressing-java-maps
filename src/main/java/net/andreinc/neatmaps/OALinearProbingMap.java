@@ -2,7 +2,6 @@ package net.andreinc.neatmaps;
 
 import net.andreinc.mockneat.abstraction.MockUnitString;
 
-import java.awt.*;
 import java.util.*;
 import java.util.List;
 
@@ -16,15 +15,13 @@ import static net.andreinc.mockneat.unit.user.Names.names;
 
 public class OALinearProbingMap<K, V> implements Map<K,V> {
 
-    private static final double OA_MAX_LOAD_FACTOR = 0.7;
-    private static final double OA_MIN_LOAD_FACTOR_WITH_MAX_PROBING = 0.5;
-    private static final int OA_MAP_CAPACITY_POW_2 = 5;
-    private static final int OA_MAP_MAX_PROBING = 1<<5;
+    private static final double OA_MAX_LOAD_FACTOR = 0.6;
+    private static final int OA_MAP_CAPACITY_POW_2 = 6;
 
     private int size = 0;
     private int tombstones = 0;
     private int cI = OA_MAP_CAPACITY_POW_2;
-    public OaEntry<K, V> buckets[] = new OaEntry[1<< OA_MAP_CAPACITY_POW_2];
+    public OaEntry<K, V>[] buckets = new OaEntry[1<< OA_MAP_CAPACITY_POW_2];
 
     /**
      * A method that mixes even further the bits of the resulting obj.hashCode().
@@ -33,7 +30,7 @@ public class OALinearProbingMap<K, V> implements Map<K,V> {
      * @param obj The object for which we are computing the hashcode
      * @return The hashcode of the object.
      */
-    private static final int hash(final Object obj) {
+    public static int hash(final Object obj) {
         int h = obj.hashCode();
         h ^= h >> 16;
         h *= 0x3243f6a9;
@@ -46,14 +43,14 @@ public class OALinearProbingMap<K, V> implements Map<K,V> {
      *
      * @return
      */
-    private final double loadFactor() {  return ((double) (size+tombstones)) / buckets.length; }
+    private double loadFactor() {  return ((double) (size+tombstones)) / buckets.length; }
 
-    private final boolean shouldGrow() {
+    private boolean shouldGrow() {
         return loadFactor() > OA_MAX_LOAD_FACTOR;
     }
 
     private final void grow() {
-        OaEntry<K,V> oldBuckets[] = this.buckets;
+        OaEntry<K,V>[] oldBuckets = this.buckets;
         this.cI++;
         this.buckets = new OaEntry[1<<cI];
         this.size=0;
@@ -92,21 +89,19 @@ public class OALinearProbingMap<K, V> implements Map<K,V> {
         return false;
     }
 
-    @Override
     public V get(Object key) {
         if (null==key) {
             throw new IllegalArgumentException("Map doesn't support null keys");
         }
         int hash = hash(key);
         int idx = hash & (buckets.length-1);
-        if (null != buckets[idx]) {
-            do {
-                if (buckets[idx].hash == hash && key.equals(buckets[idx].key)) {
-                    return buckets[idx].val;
-                }
-                idx++;
-                if (idx == buckets.length) idx = 0;
-            } while (null != buckets[idx]);
+
+        while(null!=buckets[idx]) {
+            if (buckets[idx].hash == hash && key.equals(buckets[idx].key)) {
+                return buckets[idx].val;
+            }
+            idx++;
+            if (idx==buckets.length) idx = 0;
         }
         return null;
     }
@@ -115,34 +110,32 @@ public class OALinearProbingMap<K, V> implements Map<K,V> {
         if (shouldGrow()) {
             grow();
         }
-        int probing = 0;
         int idx = hash & (buckets.length-1);
-        if (null != buckets[idx]) {
-            int perturb = hash;
-            do {
-                if (buckets[idx].key == null)
-                    break;
-                if (buckets[idx].hash == hash && key.equals(buckets[idx].key))
-                    break;
-                probing++;
-                idx++;
-                if(idx==buckets.length) idx=0;
-            } while (null != buckets[idx]);
+        while(true) {
+            if (buckets[idx] == null) {
+                // It's a free spot
+                buckets[idx] = OaEntry.createEntry(key, value, hash);
+                size++;
+                return null;
+            }
+            else if (buckets[idx].key == null) {
+                // It's a tombstone
+                buckets[idx].key = key;
+                buckets[idx].val = value;
+                buckets[idx].hash = hash;
+            }
+            else if (buckets[idx].hash == hash && key.equals(buckets[idx].key)) {
+                // We perform an update on the element
+                V ret;
+                ret = buckets[idx].val;
+                buckets[idx].key = key;
+                buckets[idx].hash = hash;
+                buckets[idx].val = value;
+                return ret;
+            }
+            idx++;
+            if (buckets.length==idx) idx = 0;
         }
-        V ret = null;
-        if (null==buckets[idx]) {
-            buckets[idx] = OaEntry.createEntry(key, value, hash);
-            size++;
-        } else {
-            ret = buckets[idx].val;
-            buckets[idx].key = key;
-            buckets[idx].hash = hash;
-            buckets[idx].val = value;
-        }
-//        if (probing>OA_MAP_MAX_PROBING && loadFactor()>OA_MIN_LOAD_FACTOR_WITH_MAX_PROBING) {
-//            grow();
-//        }
-        return ret;
     }
 
     @Override
@@ -244,7 +237,7 @@ public class OALinearProbingMap<K, V> implements Map<K,V> {
         return buff.toString();
     }
 
-    public static class OaEntry<K, V> implements Entry<K, V> {
+    protected static class OaEntry<K, V> implements Entry<K, V> {
 
         public K key;
         public V val;
@@ -283,36 +276,5 @@ public class OALinearProbingMap<K, V> implements Map<K,V> {
             this.val = value;
             return oldVal;
         }
-    }
-
-    public static void main(String[] args) {
-        final int size=900000;
-
-        MockUnitString keyGenerator =
-                probabilities(String.class)
-                        .add(0.2, names().full())
-                        .add(0.2, addresses())
-                        .add(0.2, words())
-                        .add(0.2, cars())
-                        .add(0.2, ints().mapToString())
-                        .mapToString();
-
-        OALinearProbingMap<String, Integer> oaRobinHoodMap = new OALinearProbingMap<>();
-        List<String> keyList = keyGenerator.list(size).get();
-
-
-        for(int i = 0; i < size; i++) {
-            oaRobinHoodMap.put(keyList.get(i), i);
-        }
-
-        for(int i = 0; i < size; i++) {
-            if (oaRobinHoodMap.get(keyList.get(i))==null) {
-                System.err.println(">>" + keyList.get(i));
-                break;
-            }
-        }
-
-        System.out.println(oaRobinHoodMap.size() + "=size");
-        System.out.println(new HashSet<>(keyList).size() + "=size");
     }
 }

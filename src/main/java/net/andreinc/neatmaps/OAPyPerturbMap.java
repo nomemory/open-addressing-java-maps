@@ -9,10 +9,8 @@ import static java.lang.String.format;
 
 public class OAPyPerturbMap<K, V> implements Map<K,V> {
 
-    private static final double OA_MAX_LOAD_FACTOR = 0.7;
-    private static final double OA_MIN_LOAD_FACTOR_WITH_MAX_PROBING = 0.5;
-    private static final int OA_MAP_CAPACITY_I = 12;
-    private static final int OA_MAP_MAX_PROBING = 1<<5;
+    private static final double OA_MAX_LOAD_FACTOR = 0.6;
+    private static final int OA_MAP_CAPACITY_I = 6;
     private static final int OA_PERTURB_SHIFT = 5;
 
     private int size = 0;
@@ -94,7 +92,6 @@ public class OAPyPerturbMap<K, V> implements Map<K,V> {
                 idx = 5 * idx + 1 + perturb;
                 perturb>>=OA_PERTURB_SHIFT;
                 idx = idx & (buckets.length-1);
-                if (idx == buckets.length) idx = 0;
             } while (null != buckets[idx]);
         }
         return buckets[idx] == null ? null : buckets[idx].val;
@@ -104,7 +101,6 @@ public class OAPyPerturbMap<K, V> implements Map<K,V> {
         if (shouldGrow()) {
             grow();
         }
-        int probing = 0;
         int idx = hash & (buckets.length-1);
         if (null != buckets[idx]) {
             int perturb = hash;
@@ -113,7 +109,6 @@ public class OAPyPerturbMap<K, V> implements Map<K,V> {
                     break;
                 if (buckets[idx].hash == hash && key.equals(buckets[idx].key))
                         break;
-                probing++;
                 idx = 5 * idx + 1 + perturb;
                 perturb>>=OA_PERTURB_SHIFT;
                 idx = idx & (buckets.length-1);
@@ -129,9 +124,6 @@ public class OAPyPerturbMap<K, V> implements Map<K,V> {
             buckets[idx].hash = hash;
             buckets[idx].val = value;
         }
-//        if (probing>OA_MAP_MAX_PROBING && loadFactor()>OA_MIN_LOAD_FACTOR_WITH_MAX_PROBING) {
-//            grow();
-//        }
         return ret;
     }
 

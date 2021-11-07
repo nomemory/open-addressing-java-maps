@@ -1,21 +1,21 @@
-package benchmarks;
+package performance.jmh.model;
 
-import net.andreinc.neatmaps.OALinearProbingMap;
-import net.andreinc.neatmaps.OAPyPerturbMap;
-import net.andreinc.neatmaps.OARobinHoodMap;
+import net.andreinc.neatmaps.*;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
-public enum BenchMapTypes {
+public enum MapTypes {
 
     HashMap(() -> new HashMap<>()),
     OALinearProbingMap(() -> new OALinearProbingMap<>()),
     OARobinHoodMap(()->new OARobinHoodMap()),
-    OAPYPeturbMap(() -> new OAPyPerturbMap());
+    OAPYPerturbMap(() -> new OAPyPerturbMap()),
+    OACkooSAMap(()->new OACkooSAMap()),
+    OAHopscotchMap(()->new OAHopscotchMap_draft());
 
-    BenchMapTypes(Supplier<? extends Map> supplier) {
+    MapTypes(Supplier<? extends Map> supplier) {
         this.supplier = supplier;
     }
 

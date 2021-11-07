@@ -9,16 +9,13 @@ import static net.andreinc.mockneat.unit.address.Addresses.addresses;
 import static net.andreinc.mockneat.unit.misc.Cars.cars;
 import static net.andreinc.mockneat.unit.objects.Probabilities.probabilities;
 import static net.andreinc.mockneat.unit.text.Words.words;
-import static net.andreinc.mockneat.unit.types.Bools.bools;
 import static net.andreinc.mockneat.unit.types.Ints.ints;
 import static net.andreinc.mockneat.unit.user.Names.names;
 
 public class OARobinHoodMap<K, V> implements Map<K,V> {
 
-    private static final double OA_MAX_LOAD_FACTOR = 0.7;
-    private static final double OA_MIN_LOAD_FACTOR_WITH_MAX_PROBING = 0.5;
+    private static final double OA_MAX_LOAD_FACTOR = 0.6;
     private static final int OA_MAP_CAPACITY_I = 6;
-    private static final int OA_MAP_MAX_PROBING = 1 << 5;
 
     private int size = 0;
     private int tombstones = 0;
@@ -27,7 +24,7 @@ public class OARobinHoodMap<K, V> implements Map<K,V> {
 
     // INTERNAL METHODS
 
-    private static final int hash32(final Object obj) {
+    private static final int hash(final Object obj) {
         int h = obj.hashCode();
         h ^= h >> 16;
         h *= 0x3243f6a9;
@@ -85,17 +82,21 @@ public class OARobinHoodMap<K, V> implements Map<K,V> {
 
     @Override
     public V get(Object key) {
-        int hash = hash32(key);
-        int idx = hash & (buckets.length - 1);
-        if (null != buckets[idx]) {
-            do {
-                if (buckets[idx].hash == hash && key.equals(buckets[idx].key))
-                    break;
-                idx++;
-                if (idx == buckets.length) idx = 0;
-            } while (null != buckets[idx]);
+        if (null==key) {
+            throw new IllegalArgumentException("Map doesn't support null keys");
         }
-        return buckets[idx] == null ? null : buckets[idx].val;
+        int hash = hash(key);
+        int idx = hash & (buckets.length-1);
+
+        while(null!=buckets[idx]) {
+            if (buckets[idx].hash == hash && key.equals(buckets[idx].key)) {
+                return buckets[idx].val;
+            }
+            idx++;
+            if (idx==buckets.length) idx = 0;
+        }
+
+        return null;
     }
 
     protected V put(K key, V value, int hash) {
@@ -147,13 +148,13 @@ public class OARobinHoodMap<K, V> implements Map<K,V> {
 
     @Override
     public V put(K key, V value) {
-        return put(key, value, hash32(key));
+        return put(key, value, hash(key));
     }
 
     @Override
     public V remove(Object key) {
         //TODO shrink
-        int hash = hash32(key);
+        int hash = hash(key);
         int idx = hash & (buckets.length - 1);
         if (null != buckets[idx]) {
             do {
