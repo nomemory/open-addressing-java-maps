@@ -1,4 +1,4 @@
-package net.andreinc.neatmaps;
+package net.andreinc.neatmaps.drafts;
 
 import java.util.Collection;
 import java.util.Map;

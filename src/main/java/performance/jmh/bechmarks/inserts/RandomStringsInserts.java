@@ -1,6 +1,7 @@
 package performance.jmh.bechmarks.inserts;
 
 import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.infra.Blackhole;
 import performance.jmh.model.MapTypes;
 import performance.jmh.model.StringsSources;
 
@@ -20,7 +21,7 @@ public class RandomStringsInserts {
     @Param({"KEYS_STRING_100_000", "KEYS_STRING_1_000_000", "KEYS_STRING_10_000_000"})
     private StringsSources numberOfInserts;
 
-    @Param({"HashMap", "OALinearProbingMap", "OARobinHoodMap", "OAPYPerturbMap"})
+    @Param({"HashMap", "OALinearProbingMap", "OARobinHoodMap", "OAPyPerturbMap"})
     private MapTypes mapClass;
 
     private Map testedMap;
@@ -33,7 +34,7 @@ public class RandomStringsInserts {
     }
 
     @Benchmark
-    public void randomInserts() {
-        toInsert.forEach(k -> testedMap.put(k, null));
+    public void randomInserts(Blackhole bh) {
+        toInsert.forEach(k -> bh.consume(testedMap.put(k, null)));
     }
 }

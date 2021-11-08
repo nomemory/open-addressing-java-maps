@@ -1,6 +1,7 @@
 package performance.jmh.bechmarks.reads;
 
 import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.infra.Blackhole;
 import performance.jmh.model.MapTypes;
 import performance.jmh.model.StringsSources;
 
@@ -21,10 +22,10 @@ import static net.andreinc.mockneat.unit.text.Strings.strings;
 @Measurement(iterations = 3, time = 5)
 public class SequencedStringReads {
 
-    @Param({"SEQUENCED_KEYS_1_000_000"})
+    @Param({"SEQUENCED_KEYS_10_000", "SEQUENCED_KEYS_100_000", "SEQUENCED_KEYS_1_000_000", "SEQUENCED_KEYS_10_000_000"})
     private StringsSources input;
 
-    @Param({"HashMap", "OAHopscotchMap" })
+    @Param({"OALinearProbingMap", "OARobinHoodMap", "OAPyPerturbMap", "HashMap" })
     private MapTypes mapClass;
 
     private Map testedMap;
@@ -48,13 +49,17 @@ public class SequencedStringReads {
     }
 
     @Benchmark
-    public void randomReads() {
-        testedMap.get(fromStrings(keys).get());
+    public void randomReads(Blackhole bh) {
+        bh.consume(
+            testedMap.get(fromStrings(keys).get())
+        );
     }
 
     @Benchmark
-    public void randomReadsWithMisses() {
-        testedMap.get(fromStrings(keysWithMisses).get());
+    public void randomReadsWithMisses(Blackhole bh) {
+        bh.consume(
+            testedMap.get(fromStrings(keysWithMisses).get())
+        );
     }
 
 }

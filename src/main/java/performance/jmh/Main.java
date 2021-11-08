@@ -1,6 +1,5 @@
 package performance.jmh;
 
-import org.openjdk.jmh.profile.GCProfiler;
 import org.openjdk.jmh.results.format.ResultFormatType;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
@@ -19,12 +18,12 @@ public class Main {
         Options options = new OptionsBuilder()
                 // Benchmarks to include
                 .include(RandomStringsReads.class.getName())
-//                .include(SequencedStringReads.class.getName())
+                .include(SequencedStringReads.class.getName())
                 // Configuration
                 .timeUnit(TimeUnit.MICROSECONDS)
                 .shouldDoGC(true)
                 .resultFormat(ResultFormatType.JSON)
-                .addProfiler(GCProfiler.class)
+//                .addProfiler(GCProfiler.class)
                 .result("benchmarks.json")
                 .build();
 

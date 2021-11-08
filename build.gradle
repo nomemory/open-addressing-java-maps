@@ -21,4 +21,11 @@ dependencies {
 
 test {
     useJUnitPlatform()
+    minHeapSize = "4096m" // initial heap size
+    maxHeapSize = "16384m" // maximum heap size
+}
+
+test {
+
+    jvmArgs '-XX:MaxPermSize=256m' // mem argument for the test JVM
 }

@@ -18,17 +18,15 @@ import static net.andreinc.mockneat.unit.text.Strings.strings;
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Benchmark)
-@Fork(value = 3, jvmArgs = {"-Xms6G", "-Xmx16G"})
-@Warmup(iterations = 5, time = 5)
-@Measurement(iterations = 10, time = 5)
+@Fork(value = 2, jvmArgs = {"-Xms6G", "-Xmx16G"})
+@Warmup(iterations = 2, time = 10)
+@Measurement(iterations = 5, time = 10)
 public class RandomStringsReads {
 
-//    @Param({"KEYS_STRING_1_000_000", "KEYS_STRING_10_000_000"})
-    @Param({"KEYS_STRING_100_000"})
+    @Param({"KEYS_STRING_10_000", "KEYS_STRING_100_000", "KEYS_STRING_1_000_000", "KEYS_STRING_10_000_000"})
     private StringsSources input;
 
-//    @Param({"HashMap", "OACkooSAMap","OALinearProbingMap", "OARobinHoodMap", "OAPYPerturbMap"})
-    @Param({"HashMap", "OAHopscotchMap" })
+    @Param({"OALinearProbingMap", "OARobinHoodMap", "OAPyPerturbMap", "HashMap" })
     private MapTypes mapClass;
 
     private Map testedMap;

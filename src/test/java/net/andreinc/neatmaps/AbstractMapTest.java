@@ -4,9 +4,11 @@ import net.andreinc.mockneat.abstraction.MockUnit;
 import net.andreinc.mockneat.unit.objects.From;
 import org.junit.jupiter.api.*;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 import static net.andreinc.mockneat.unit.address.Addresses.addresses;
@@ -19,9 +21,10 @@ import static net.andreinc.mockneat.unit.types.Ints.ints;
 import static net.andreinc.mockneat.unit.user.Names.names;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Timeout(value = 10, unit = TimeUnit.MINUTES)
 public abstract class AbstractMapTest<K, V> {
 
-    protected static final int DEFAULT_MAP_SIZE = 100_000;
+    protected static final int DEFAULT_MAP_SIZE = 1_000_000;
 
     protected Map<K,V> testMap;
     protected Supplier<Map<K, V>> mapSupplier;
@@ -59,10 +62,10 @@ public abstract class AbstractMapTest<K, V> {
         });
     }
 
-    @Test
+    @Test()
     public void testRemoves() {
         List<K> initialKeys = keyGenerator.list(DEFAULT_MAP_SIZE).get();
-        Set<K> removedKeys = From.from(initialKeys).set(DEFAULT_MAP_SIZE/2).get();
+        Set<K> removedKeys = From.from(initialKeys).set((DEFAULT_MAP_SIZE/10)*9).get();
 
         initialKeys.forEach(key -> {
             testMap.put(key, valuesSupplier.get());
@@ -77,6 +80,18 @@ public abstract class AbstractMapTest<K, V> {
             Assertions.assertNull(testMap.remove(key));
             Assertions.assertNull(testMap.get(key));
         });
+    }
+
+    @Test
+    public void testRemoveAll() {
+        List<K> initialKeys = keyGenerator.list(DEFAULT_MAP_SIZE).get();
+        initialKeys.forEach(key -> {
+            testMap.put(key, valuesSupplier.get());
+        });
+        initialKeys.forEach(key -> {
+            testMap.remove(key);
+        });
+        Assertions.assertTrue(testMap.isEmpty());
     }
 
     @Test
@@ -110,22 +125,17 @@ public abstract class AbstractMapTest<K, V> {
         });
     }
 
+    @Timeout(value = 10, unit = TimeUnit.MINUTES)
     public static abstract class StringKeysTest extends AbstractMapTest<String, String> {
         public StringKeysTest() {
             super();
-            this.keyGenerator =
-                    probabilities(String.class)
-                            .add(0.2, names().full())
-                            .add(0.2, addresses())
-                            .add(0.2, words())
-                            .add(0.2, cars())
-                            .add(0.2, ints().mapToString())
-                            .mapToString();
+            this.keyGenerator = names().full();
             this.valueConstant = "ABC";
             this.keyConstant = "XYZ";
         }
     }
 
+    @Timeout(value = 10, unit = TimeUnit.MINUTES)
     public static abstract class IntKeysTest extends AbstractMapTest<Integer, String> {
         public IntKeysTest() {
             super();

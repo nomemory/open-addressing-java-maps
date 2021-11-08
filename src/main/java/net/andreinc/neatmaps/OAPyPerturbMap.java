@@ -9,14 +9,16 @@ import static java.lang.String.format;
 
 public class OAPyPerturbMap<K, V> implements Map<K,V> {
 
-    private static final double OA_MAX_LOAD_FACTOR = 0.6;
-    private static final int OA_MAP_CAPACITY_I = 6;
-    private static final int OA_PERTURB_SHIFT = 5;
+    private static final double DEFAULT_MAX_LOAD_FACTOR = 0.6;
+    private static final double DEFAULT_MIN_LOAD_FACTOR = DEFAULT_MAX_LOAD_FACTOR / 4;
+    private static final int DEFAULT_MAP_CAPACITY_POW_2 = 6;
+    private static final int SHIFTER = 5;
 
     private int size = 0;
     private int tombstones = 0;
-    private int cI = OA_MAP_CAPACITY_I;
-    private OaEntry<K, V> buckets[] = new OaEntry[1<<OA_MAP_CAPACITY_I];
+    private int capPow2 = DEFAULT_MAP_CAPACITY_POW_2;
+
+    private Entry<K, V> buckets[] = new Entry[1<< DEFAULT_MAP_CAPACITY_POW_2];
 
     public OAPyPerturbMap() {
     }
@@ -31,22 +33,30 @@ public class OAPyPerturbMap<K, V> implements Map<K,V> {
         return h & 0xfffffff;
     }
 
-    private final double loadFactor() {  return ((double) (size+tombstones)) / buckets.length; }
-
-    private final boolean shouldGrow() {
-        return loadFactor() > OA_MAX_LOAD_FACTOR;
+    protected final void reHashElements(int capModifier) {
+        this.capPow2 +=capModifier;
+        Entry<K, V>[] oldBuckets = this.buckets;
+        this.buckets = new Entry[1 << capPow2];
+        this.size = 0;
+        this.tombstones = 0;
+        for (int i = 0; i < oldBuckets.length; ++i) {
+            if (null != oldBuckets[i] && oldBuckets[i].key != null) {
+                this.put(oldBuckets[i].key, oldBuckets[i].value, oldBuckets[i].hash);
+            }
+        }
     }
 
-    private final void grow() {
-        OaEntry<K,V> oldBuckets[] = this.buckets;
-        this.cI++;
-        this.buckets = new OaEntry[1<<cI];
-        this.size=0;
-        this.tombstones=0;
-        for(int i = 0; i < oldBuckets.length; ++i) {
-            if (null!=oldBuckets[i] && oldBuckets[i].key!=null) {
-                this.put(oldBuckets[i].key, oldBuckets[i].val, oldBuckets[i].hash);
-            }
+    protected final void increaseCapacity() {
+        final double lf = (double)(size+tombstones) / buckets.length;
+        if (lf > DEFAULT_MAX_LOAD_FACTOR) {
+            reHashElements(1);
+        }
+    }
+
+    protected final void decreaseCapacity() {
+        final double lf = (double)(size) / buckets.length;
+        if (lf < DEFAULT_MIN_LOAD_FACTOR && this.capPow2 > DEFAULT_MAP_CAPACITY_POW_2) {
+            reHashElements(-1);
         }
     }
 
@@ -84,47 +94,51 @@ public class OAPyPerturbMap<K, V> implements Map<K,V> {
         }
         int hash = hash32(key);
         int idx = hash & (buckets.length-1);
-        if (null != buckets[idx]) {
-            int perturb = hash;
-            do {
-                if (buckets[idx].hash == hash && key.equals(buckets[idx].key))
-                        break;
-                idx = 5 * idx + 1 + perturb;
-                perturb>>=OA_PERTURB_SHIFT;
-                idx = idx & (buckets.length-1);
-            } while (null != buckets[idx]);
+        if (null == buckets[idx]) {
+            return null;
         }
-        return buckets[idx] == null ? null : buckets[idx].val;
+        int perturb = hash;
+        do {
+            if (buckets[idx].hash == hash && key.equals(buckets[idx].key)) {
+                return buckets[idx].value;
+            }
+            idx = 5 * idx + 1 + perturb;
+            perturb>>= SHIFTER;
+            idx = idx & (buckets.length-1);
+        } while (null != buckets[idx]);
+        return null;
     }
 
     protected V put(K key, V value, int hash) {
-        if (shouldGrow()) {
-            grow();
-        }
+        increaseCapacity();
         int idx = hash & (buckets.length-1);
-        if (null != buckets[idx]) {
-            int perturb = hash;
-            do {
-                if (buckets[idx].key == null)
-                    break;
-                if (buckets[idx].hash == hash && key.equals(buckets[idx].key))
-                        break;
-                idx = 5 * idx + 1 + perturb;
-                perturb>>=OA_PERTURB_SHIFT;
-                idx = idx & (buckets.length-1);
-            } while (null != buckets[idx]);
+        int perturb = hash;
+        while(true) {
+            if (buckets[idx] == null) {
+                // It's a free spot
+                buckets[idx] = new Entry<>(key, value, hash);
+                size++;
+                return null;
+            }
+            else if (buckets[idx].key == null) {
+                // It's a tombstone
+                buckets[idx].key = key;
+                buckets[idx].value = value;
+                buckets[idx].hash = hash;
+            }
+            else if (buckets[idx].hash == hash && key.equals(buckets[idx].key)) {
+                // We perform an update on the element
+                V ret;
+                ret = buckets[idx].value;
+                buckets[idx].key = key;
+                buckets[idx].hash = hash;
+                buckets[idx].value = value;
+                return ret;
+            }
+            idx = 5 * idx + 1 + perturb;
+            perturb>>= SHIFTER;
+            idx = idx & (buckets.length-1);
         }
-        V ret = null;
-        if (null==buckets[idx]) {
-            buckets[idx] = OaEntry.createEntry(key, value, hash);
-            size++;
-        } else {
-            ret = buckets[idx].val;
-            buckets[idx].key = key;
-            buckets[idx].hash = hash;
-            buckets[idx].val = value;
-        }
-        return ret;
     }
 
     @Override
@@ -140,29 +154,28 @@ public class OAPyPerturbMap<K, V> implements Map<K,V> {
         if (null==key) {
             throw new IllegalArgumentException("Map doesn't support null keys");
         }
-        //TODO shrink
         int hash = hash32(key);
         int idx = hash & (buckets.length-1);
-        if (null!=buckets[idx]) {
-            int perturb = hash;
-            do {
-                if (buckets[idx].hash == hash && key.equals(buckets[idx].key))
-                        break;
-                idx = 5 * idx + 1 + perturb;
-                perturb>>=OA_PERTURB_SHIFT;
-                idx = idx & (buckets.length-1);
-            } while (null != buckets[idx]);
+        if (null==buckets[idx]) {
+            return null;
         }
-        V oldVal = null;
-        if (null!=buckets[idx]) {
-            oldVal = buckets[idx].val;
-            buckets[idx].key = null;
-            buckets[idx].val = null;
-            buckets[idx].hash = 0;
-            tombstones++;
-            size--;
-        }
-        return oldVal;
+        int perturb = hash;
+        do {
+            if (buckets[idx].hash == hash && key.equals(buckets[idx].key)) {
+                V oldVal = buckets[idx].value;
+                buckets[idx].key = null;
+                buckets[idx].value = null;
+                buckets[idx].hash = 0;
+                tombstones++;
+                size--;
+                return oldVal;
+            }
+            idx = 5 * idx + 1 + perturb;
+            perturb>>= SHIFTER;
+            idx = idx & (buckets.length-1);
+        } while (null != buckets[idx]);
+        decreaseCapacity();
+        return null;
     }
 
     @Override
@@ -174,7 +187,7 @@ public class OAPyPerturbMap<K, V> implements Map<K,V> {
 
     @Override
     public void clear() {
-        buckets = new OaEntry[1<<OA_MAP_CAPACITY_I];
+        buckets = new Entry[1<<DEFAULT_MAP_CAPACITY_POW_2];
     }
 
     @Override
@@ -193,15 +206,15 @@ public class OAPyPerturbMap<K, V> implements Map<K,V> {
         HashSet<V> result = new HashSet<>();
         for(int i = 0; i < buckets.length; i++) {
             if (buckets[i]!=null) {
-                result.add(buckets[i].val);
+                result.add(buckets[i].value);
             }
         }
         return result;
     }
 
     @Override
-    public Set<Entry<K, V>> entrySet() {
-        HashSet<Entry<K, V>> result = new HashSet<>();
+    public Set<Map.Entry<K, V>> entrySet() {
+        HashSet<Map.Entry<K, V>> result = new HashSet<>();
         for(int i = 0; i < buckets.length; i++) {
             if (buckets[i]!=null) {
                 result.add(buckets[i]);
@@ -222,31 +235,29 @@ public class OAPyPerturbMap<K, V> implements Map<K,V> {
                 buff.append("TOMBSTONE\n");
             } else {
                 buff.append(format(" {hash=%d, key=%s, value=%s }\n",
-                        buckets[i].hash, buckets[i].key, buckets[i].val));
+                        buckets[i].hash, buckets[i].key, buckets[i].value));
             }
         }
         return buff.toString();
     }
 
-    public static class OaEntry<K, V> implements Entry<K, V> {
+    public static class Entry<K, V> implements Map.Entry<K, V> {
 
         private K key;
-        private V val;
+        private V value;
         private int hash;
 
-        public static <K, V> OaEntry<K, V> createEntry(K key, V val, int hash) {
-            OaEntry<K,V> result = new OaEntry<>();
-            result.key = key;
-            result.val = val;
-            result.hash = hash;
-            return result;
+        public Entry(K key, V val, int hash) {
+            this.key = key;
+            this.value = val;
+            this.hash = hash;
         }
 
         @Override
         public String toString() {
             return "OaEntry{" +
                     "key=" + key +
-                    ", val=" + val +
+                    ", val=" + value +
                     ", hash=" + hash +
                     '}';
         }
@@ -258,13 +269,13 @@ public class OAPyPerturbMap<K, V> implements Map<K,V> {
 
         @Override
         public V getValue() {
-            return val;
+            return value;
         }
 
         @Override
         public V setValue(V value) {
-            V oldVal = this.val;
-            this.val = value;
+            V oldVal = this.value;
+            this.value = value;
             return oldVal;
         }
     }

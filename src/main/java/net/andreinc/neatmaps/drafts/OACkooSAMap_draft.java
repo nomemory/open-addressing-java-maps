@@ -1,10 +1,10 @@
-package net.andreinc.neatmaps;
-
-import org.jetbrains.annotations.NotNull;
+package net.andreinc.neatmaps.drafts;
 
 import java.util.*;
 
-public class OACkooSAMap<K,V> implements Map<K, V> {
+import static net.andreinc.mockneat.unit.seq.IntSeq.intSeq;
+
+public class OACkooSAMap_draft<K,V> implements Map<K, V> {
 
     protected static final double DEFAULT_MAX_LOAD_FACTOR = 0.6;
     protected static final int DEFAULT_SIZE_POWER_OF_TWO = 6;
@@ -35,8 +35,24 @@ public class OACkooSAMap<K,V> implements Map<K, V> {
 
     protected Entry<K,V>[] buckets;
 
-    public OACkooSAMap() {
+    public OACkooSAMap_draft() {
         buckets = new Entry[DEFAULT_CAPACITY_BUCKETS];
+    }
+
+    public static void main(String[] args) {
+        OACkooSAMap_draft m = new OACkooSAMap_draft();
+//        Set<String> names = names().full().set(1_000_000).get();
+        Set<String> names = intSeq().mapToString().set(3_000_000).get();
+        for(String name: names) {
+            m.put(name, name);
+        }
+        for(String name: names) {
+            if (m.get(name)==null) {
+                System.err.println(name);
+            }
+        }
+        System.out.println(names.size());
+        System.out.println(m.size);
     }
 
     @Override
@@ -64,6 +80,7 @@ public class OACkooSAMap<K,V> implements Map<K, V> {
         this.size=0;
         Entry<K,V>[] old = this.buckets;
         this.buckets = new Entry[capacityBuckets];
+        System.out.println(capacityBuckets);
         for(int i = 0; i < old.length;i++) {
             if (old[i]!=null) {
                 this.put(old[i].key, old[i].value);
@@ -235,8 +252,8 @@ public class OACkooSAMap<K,V> implements Map<K, V> {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof OACkooSAMap)) return false;
-        OACkooSAMap<?, ?> that = (OACkooSAMap<?, ?>) o;
+        if (!(o instanceof OACkooSAMap_draft)) return false;
+        OACkooSAMap_draft<?, ?> that = (OACkooSAMap_draft<?, ?>) o;
         return size == that.size &&
                 offset == that.offset &&
                 capacityBuckets == that.capacityBuckets &&
