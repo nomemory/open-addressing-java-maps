@@ -1,9 +1,9 @@
 package performance.jmh.bechmarks.reads;
 
+import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 import performance.jmh.types.MapTypes;
 import performance.jmh.types.StringsSourceTypes;
-import org.openjdk.jmh.annotations.*;
 
 import java.io.IOException;
 import java.util.List;
@@ -19,11 +19,11 @@ import static net.andreinc.mockneat.unit.text.Strings.strings;
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Benchmark)
 @Fork(value = 2, jvmArgs = {"-Xms6G", "-Xmx16G"})
-@Warmup(iterations = 2, time = 10)
-@Measurement(iterations = 5, time = 10)
-public class RandomStringsReads {
+@Warmup(iterations = 1, time = 10)
+@Measurement(iterations = 4, time = 10)
+public class AlphaNumericCodesReads {
 
-    @Param({"KEYS_STRING_1_000", "KEYS_STRING_10_000", "KEYS_STRING_100_000", "KEYS_STRING_1_000_000", "KEYS_STRING_10_000_000"})
+    @Param({"SIX_CHARS_ALPHA_1_000", "SIX_CHARS_ALPHA_10_000", "SIX_CHARS_ALPHA_100_000", "SIX_CHARS_ALPHA_1_000_000", "SIX_CHARS_ALPHA_10_000_000"})
     private StringsSourceTypes input;
 
     @Param({"LProbMap", "LProbBinsMap", "LProbRadarMap", "RobinHoodMap", "PerturbMap", "HashMap"})
@@ -50,7 +50,6 @@ public class RandomStringsReads {
     }
 
     @Benchmark
-    @CompilerControl(CompilerControl.Mode.INLINE)
     public void randomReads(Blackhole bh) {
         bh.consume(
                 testedMap.get(fromStrings(keys).get())
@@ -58,7 +57,6 @@ public class RandomStringsReads {
     }
 
     @Benchmark
-    @CompilerControl(CompilerControl.Mode.INLINE)
     public void randomReadsWithMisses(Blackhole bh) {
         bh.consume(
                 testedMap.get(fromStrings(keysWithMisses).get())

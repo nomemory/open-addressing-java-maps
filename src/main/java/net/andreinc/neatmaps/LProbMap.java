@@ -1,35 +1,24 @@
-package net.andreinc.neatmaps.drafts;
+package net.andreinc.neatmaps;
 
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static java.lang.String.format;
 
-public class OALinearProbingRadarMap_draft<K, V> implements Map<K,V> {
+public class LProbMap<K, V> implements Map<K,V> {
 
     private static final double DEFAULT_MAX_LOAD_FACTOR = 0.6;
+    private static final double DEFAULT_MIN_LOAD_FACTOR = DEFAULT_MAX_LOAD_FACTOR / 4;
     private static final int DEFAULT_MAP_CAPACITY_POW_2 = 6;
-    private static final short DEFAULT_MAX_PROBING = 1 << 5;
 
     private int size = 0;
     private int tombstones = 0;
-    private int cI = DEFAULT_MAP_CAPACITY_POW_2;
-    public OaEntry<K, V>[] buckets = new OaEntry[1<< DEFAULT_MAP_CAPACITY_POW_2];
+    private int capPow2 = DEFAULT_MAP_CAPACITY_POW_2;
 
-    public static String toBinary(int n, int len)
-    {
-        String binary = "";
-        for (long i = (1L << len - 1); i > 0; i = i / 2) {
-            binary += (n & i) != 0 ? "1" : "0";
-        }
-        return binary;
-    }
+    public LProbMapEntry<K, V>[] buckets = new LProbMapEntry[1<< DEFAULT_MAP_CAPACITY_POW_2];
 
     /**
      * A method that mixes even further the bits of the resulting obj.hashCode().
-     * Inspired by the Murmur Hash mixer.
+     * Inspired by the Murmur Hash mixer (finalizer).
      *
      * @param obj The object for which we are computing the hashcode
      * @return The hashcode of the object.
@@ -42,27 +31,30 @@ public class OALinearProbingRadarMap_draft<K, V> implements Map<K,V> {
         return h & 0xfffffff;
     }
 
-    /**
-     * A method that computes the load factor. It takes tombstones into consideration.
-     *
-     * @return
-     */
-    private double loadFactor() {  return ((double) (size+tombstones)) / buckets.length; }
-
-    private boolean shouldGrow() {
-        return loadFactor() > DEFAULT_MAX_LOAD_FACTOR;
+    protected final void reHashElements(int capModifier) {
+        this.capPow2+=capModifier;
+        LProbMapEntry<K, V>[] oldBuckets = this.buckets;
+        this.buckets = new LProbMapEntry[1 << capPow2];
+        this.size = 0;
+        this.tombstones = 0;
+        for (int i = 0; i < oldBuckets.length; ++i) {
+            if (null != oldBuckets[i] && oldBuckets[i].key != null) {
+                this.put(oldBuckets[i].key, oldBuckets[i].value, oldBuckets[i].hash);
+            }
+        }
     }
 
-    private final void grow() {
-        OaEntry<K,V>[] oldBuckets = this.buckets;
-        this.cI++;
-        this.buckets = new OaEntry[1<<cI];
-        this.size=0;
-        this.tombstones=0;
-        for(int i = 0; i < oldBuckets.length; ++i) {
-            if (null!=oldBuckets[i] && oldBuckets[i].key!=null) {
-                this.put(oldBuckets[i].key, oldBuckets[i].val, oldBuckets[i].hash);
-            }
+    protected final void increaseCapacity() {
+        final double lf = (double)(size+tombstones) / buckets.length;
+        if (lf > DEFAULT_MAX_LOAD_FACTOR) {
+            reHashElements(1);
+        }
+    }
+
+    protected final void decreaseCapacity() {
+        final double lf = (double)(size) / buckets.length;
+        if (lf < DEFAULT_MIN_LOAD_FACTOR && this.capPow2 > DEFAULT_MAP_CAPACITY_POW_2) {
+            reHashElements(-1);
         }
     }
 
@@ -94,61 +86,57 @@ public class OALinearProbingRadarMap_draft<K, V> implements Map<K,V> {
     }
 
     public V get(Object key) {
-        if (null==key) {
-            throw new IllegalArgumentException("Map doesn't support null keys");
-        }
         int hash = hash(key);
         int idx = hash & (buckets.length-1);
-        if (buckets[idx]==null) {
+        LProbMapEntry<K,V> bucket = buckets[idx];
+        if (bucket==null) {
             return null;
         }
-        int radar = buckets[idx].radar;
-        for(int bit = 0; bit < 32; bit++) {
-            if (((radar>>bit)&1)==1 && buckets[idx].hash == hash && key.equals(buckets[idx].key)) {
-                return buckets[idx].val;
+        do {
+            if (bucket.hash == hash && key.equals(bucket.key)) {
+                return bucket.value;
             }
             idx++;
-            if (idx == buckets.length) idx = 0;
-        }
+            if (idx==buckets.length) idx = 0;
+            bucket = buckets[idx];
+        } while(null!=bucket);
         return null;
     }
 
     protected V put(K key, V value, int hash) {
-        if (shouldGrow()) {
-            grow();
-        }
+        // We increase capacity if it's needed
+        increaseCapacity();
+        // We calculate the base bucket for the entry
         int idx = hash & (buckets.length-1);
-        int base = idx;
-        int probing = 0;
         while(true) {
-            if (probing==32) {
-                grow();
-                return put(key, value, hash);
-            }
+            // If the slot is empty, we insert the new item
             if (buckets[idx] == null) {
                 // It's a free spot
-                buckets[idx] = new OaEntry(key, value, hash);
-                buckets[base].radar |= (1 << probing);
+                buckets[idx] = new LProbMapEntry<>(key, value, hash);
                 size++;
+                // No value was updated so we return null
                 return null;
             }
             else if (buckets[idx].key == null) {
                 // It's a tombstone
+                // We update the entry with the new values
                 buckets[idx].key = key;
-                buckets[idx].val = value;
+                buckets[idx].value = value;
                 buckets[idx].hash = hash;
-                buckets[base].radar |= (1 << probing);
+                size++;
+                // No value was updated so we return null
+                return null;
             }
             else if (buckets[idx].hash == hash && key.equals(buckets[idx].key)) {
-                // We perform an update on the element
+                // The element already existed in the map
+                // We keep the old value to return it later
+                // We update the element to new value
                 V ret;
-                ret = buckets[idx].val;
-                buckets[idx].key = key;
-                buckets[idx].hash = hash;
-                buckets[idx].val = value;
+                ret = buckets[idx].value;
+                buckets[idx].value = value;
+                // We return the value that was replaced
                 return ret;
             }
-            probing++;
             idx++;
             if (buckets.length==idx) idx = 0;
         }
@@ -164,30 +152,26 @@ public class OALinearProbingRadarMap_draft<K, V> implements Map<K,V> {
 
     @Override
     public V remove(Object key) {
-        if (null==key) {
-            throw new IllegalArgumentException("Map doesn't support null keys");
-        }
-        //TODO shrink
         int hash = hash(key);
         int idx = hash & (buckets.length-1);
-        if (null!=buckets[idx]) {
-            do {
-                if (buckets[idx].hash == hash && key.equals(buckets[idx].key))
-                    break;
-                idx++;
-                if (idx == buckets.length) idx = 0;
-            } while (null != buckets[idx]);
+        if (null==buckets[idx]) {
+            return null;
         }
-        V oldVal = null;
-        if (null!=buckets[idx]) {
-            oldVal = buckets[idx].val;
-            buckets[idx].key = null;
-            buckets[idx].val = null;
-            buckets[idx].hash = 0;
-            tombstones++;
-            size--;
-        }
-        return oldVal;
+        do {
+            if (buckets[idx].hash == hash && key.equals(buckets[idx].key)) {
+                V oldVal = buckets[idx].value;
+                buckets[idx].key = null;
+                buckets[idx].value = null;
+                buckets[idx].hash = 0;
+                tombstones++;
+                size--;
+                return oldVal;
+            }
+            idx++;
+            if (idx == buckets.length) idx = 0;
+        } while (null != buckets[idx]);
+        decreaseCapacity();
+        return null;
     }
 
     @Override
@@ -199,7 +183,7 @@ public class OALinearProbingRadarMap_draft<K, V> implements Map<K,V> {
 
     @Override
     public void clear() {
-        buckets = new OaEntry[1<< DEFAULT_MAP_CAPACITY_POW_2];
+        buckets = new LProbMapEntry[1<<DEFAULT_MAP_CAPACITY_POW_2];
     }
 
     @Override
@@ -218,15 +202,15 @@ public class OALinearProbingRadarMap_draft<K, V> implements Map<K,V> {
         HashSet<V> result = new HashSet<>();
         for(int i = 0; i < buckets.length; i++) {
             if (buckets[i]!=null) {
-                result.add(buckets[i].val);
+                result.add(buckets[i].value);
             }
         }
         return result;
     }
 
     @Override
-    public Set<Entry<K, V>> entrySet() {
-        HashSet<Entry<K, V>> result = new HashSet<>();
+    public Set<Map.Entry<K, V>> entrySet() {
+        HashSet<Map.Entry<K, V>> result = new HashSet<>();
         for(int i = 0; i < buckets.length; i++) {
             if (buckets[i]!=null) {
                 result.add(buckets[i]);
@@ -246,34 +230,31 @@ public class OALinearProbingRadarMap_draft<K, V> implements Map<K,V> {
             else if (buckets[i].key==null) {
                 buff.append("TOMBSTONE\n");
             } else {
-                buff.append(format(" {hash=%d, key=%s, value=%s, radar=%s }\n",
-                        buckets[i].hash, buckets[i].key, buckets[i].val, toBinary(buckets[i].radar, 32)));
+                buff.append(format(" {hash=%d, key=%s, value=%s }\n",
+                        buckets[i].hash, buckets[i].key, buckets[i].value));
             }
         }
         return buff.toString();
     }
 
-    protected static class OaEntry<K, V> implements Entry<K, V> {
+    protected static class LProbMapEntry<K, V> implements Map.Entry<K, V> {
 
         public K key;
-        public V val;
+        public V value;
         public int hash;
-        public int radar;
 
-        public OaEntry(K key, V val, int hash) {
+        public LProbMapEntry(K key, V value, int hash) {
             this.key = key;
-            this.val = val;
+            this.value = value;
             this.hash = hash;
-            this.radar = 0;
         }
 
         @Override
         public String toString() {
             return "OaEntry{" +
                     "key=" + key +
-                    ", val=" + val +
+                    ", val=" + value +
                     ", hash=" + hash +
-                    ", radar=" + Integer.toBinaryString(radar) +
                     '}';
         }
 
@@ -284,26 +265,14 @@ public class OALinearProbingRadarMap_draft<K, V> implements Map<K,V> {
 
         @Override
         public V getValue() {
-            return val;
+            return value;
         }
 
         @Override
         public V setValue(V value) {
-            V oldVal = this.val;
-            this.val = value;
+            V oldVal = this.value;
+            this.value = value;
             return oldVal;
         }
-    }
-
-    public static void main(String[] args) {
-        int size = 100;
-        OALinearProbingRadarMap_draft rm = new OALinearProbingRadarMap_draft();
-        for (int i = 0; i < size; i++) {
-            rm.put(i, i);
-        }
-        for (int i = 0; i < size; i++) {
-            System.out.println(rm.get(i));
-        }
-        System.out.println(rm);
     }
 }

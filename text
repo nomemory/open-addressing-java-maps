@@ -1,0 +1,139 @@
+
+  ((no bae))
+  // access flags 0x1
+  // signature (Ljava/lang/Object;)TV;
+  // declaration: V get(java.lang.Object)
+  public get(Ljava/lang/Object;)Ljava/lang/Object;
+   L0
+    LINENUMBER 92 L0
+    ALOAD 1
+    INVOKESTATIC net/andreinc/neatmaps/OALinearProbingMap.hash (Ljava/lang/Object;)I
+    ISTORE 2
+   L1
+    LINENUMBER 93 L1
+    ILOAD 2
+    ALOAD 0
+    GETFIELD net/andreinc/neatmaps/OALinearProbingMap.buckets : [Lnet/andreinc/neatmaps/OALinearProbingMap$Entry;
+    ARRAYLENGTH
+    ICONST_1
+    ISUB
+    IAND
+    ISTORE 3
+   L2
+    LINENUMBER 94 L2
+    ALOAD 0
+    GETFIELD net/andreinc/neatmaps/OALinearProbingMap.buckets : [Lnet/andreinc/neatmaps/OALinearProbingMap$Entry;
+    ILOAD 3
+    AALOAD
+    IFNONNULL L3
+   L4
+    LINENUMBER 95 L4
+    ACONST_NULL
+    ARETURN
+   L3
+    LINENUMBER 101 L3
+   FRAME APPEND [I I]
+    IINC 3 1
+   L5
+    LINENUMBER 102 L5
+    ILOAD 3
+    ALOAD 0
+    GETFIELD net/andreinc/neatmaps/OALinearProbingMap.buckets : [Lnet/andreinc/neatmaps/OALinearProbingMap$Entry;
+    ARRAYLENGTH
+    IF_ICMPNE L6
+    ICONST_0
+    ISTORE 3
+   L6
+    LINENUMBER 103 L6
+   FRAME SAME
+    ACONST_NULL
+    ALOAD 0
+    GETFIELD net/andreinc/neatmaps/OALinearProbingMap.buckets : [Lnet/andreinc/neatmaps/OALinearProbingMap$Entry;
+    ILOAD 3
+    AALOAD
+    IF_ACMPNE L3
+   L7
+    LINENUMBER 104 L7
+    ACONST_NULL
+    ARETURN
+   L8
+    LOCALVARIABLE this Lnet/andreinc/neatmaps/OALinearProbingMap; L0 L8 0
+    // signature Lnet/andreinc/neatmaps/OALinearProbingMap<TK;TV;>;
+    // declaration: this extends net.andreinc.neatmaps.LProbMap<K, V>
+    LOCALVARIABLE key Ljava/lang/Object; L0 L8 1
+    LOCALVARIABLE hash I L1 L8 2
+    LOCALVARIABLE idx I L2 L8 3
+    MAXSTACK = 3
+    MAXLOCALS = 4
+
+    //------------
+
+    ((bae))
+    // access flags 0x1
+      // signature (Ljava/lang/Object;)TV;
+      // declaration: V get(java.lang.Object)
+      public get(Ljava/lang/Object;)Ljava/lang/Object;
+       L0
+        LINENUMBER 103 L0
+        ALOAD 1
+        INVOKESTATIC net/andreinc/neatmaps/OALinearProbingBAE_draft.hash (Ljava/lang/Object;)I
+        ISTORE 2
+       L1
+        LINENUMBER 104 L1
+        ILOAD 2
+        ALOAD 0
+        GETFIELD net/andreinc/neatmaps/OALinearProbingBAE_draft.bins : [J
+        ARRAYLENGTH
+        ICONST_1
+        ISUB
+        IAND
+        ISTORE 3
+       L2
+        LINENUMBER 105 L2
+        ALOAD 0
+        GETFIELD net/andreinc/neatmaps/OALinearProbingBAE_draft.bins : [J
+        ILOAD 3
+        LALOAD
+        LDC 4294967296
+        LCMP
+        IFNE L3
+       L4
+        LINENUMBER 106 L4
+        ACONST_NULL
+        ARETURN
+       L3
+        LINENUMBER 113 L3
+       FRAME APPEND [I I]
+        IINC 3 1
+       L5
+        LINENUMBER 114 L5
+        ILOAD 3
+        ALOAD 0
+        GETFIELD net/andreinc/neatmaps/OALinearProbingBAE_draft.bins : [J
+        ARRAYLENGTH
+        IF_ICMPNE L6
+        ICONST_0
+        ISTORE 3
+       L6
+        LINENUMBER 115 L6
+       FRAME SAME
+        ALOAD 0
+        GETFIELD net/andreinc/neatmaps/OALinearProbingBAE_draft.bins : [J
+        ILOAD 3
+        LALOAD
+        LDC 4294967296
+        LCMP
+        IFNE L3
+       L7
+        LINENUMBER 116 L7
+        ACONST_NULL
+        ARETURN
+       L8
+        LOCALVARIABLE this Lnet/andreinc/neatmaps/OALinearProbingBAE_draft; L0 L8 0
+        // signature Lnet/andreinc/neatmaps/OALinearProbingBAE_draft<TK;TV;>;
+        // declaration: this extends net.andreinc.neatmaps.drafts.LProbLongBinsMap_draft<K, V>
+        LOCALVARIABLE key Ljava/lang/Object; L0 L8 1
+        LOCALVARIABLE hash I L1 L8 2
+        LOCALVARIABLE idx I L2 L8 3
+        MAXSTACK = 4
+        MAXLOCALS = 5

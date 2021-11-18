@@ -4,20 +4,14 @@ import net.andreinc.mockneat.abstraction.MockUnit;
 import net.andreinc.mockneat.unit.objects.From;
 import org.junit.jupiter.api.*;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
-import static net.andreinc.mockneat.unit.address.Addresses.addresses;
-import static net.andreinc.mockneat.unit.misc.Cars.cars;
 import static net.andreinc.mockneat.unit.objects.Constant.constant;
-import static net.andreinc.mockneat.unit.objects.Probabilities.probabilities;
 import static net.andreinc.mockneat.unit.seq.IntSeq.intSeq;
-import static net.andreinc.mockneat.unit.text.Words.words;
-import static net.andreinc.mockneat.unit.types.Ints.ints;
 import static net.andreinc.mockneat.unit.user.Names.names;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -139,7 +133,7 @@ public abstract class AbstractMapTest<K, V> {
     public static abstract class IntKeysTest extends AbstractMapTest<Integer, String> {
         public IntKeysTest() {
             super();
-            this.mapSupplier = () -> new OALinearProbingMap<>();
+            this.mapSupplier = () -> new LProbMap<>();
             this.keyGenerator = intSeq();
             this.valueConstant = "ABC";
             this.keyConstant = 0;

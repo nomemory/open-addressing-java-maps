@@ -2,8 +2,8 @@ package performance.jmh.bechmarks.inserts;
 
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
-import performance.jmh.model.MapTypes;
-import performance.jmh.model.StringsSources;
+import performance.jmh.types.MapTypes;
+import performance.jmh.types.StringsSourceTypes;
 
 import java.io.IOException;
 import java.util.List;
@@ -19,9 +19,9 @@ import java.util.concurrent.TimeUnit;
 public class RandomStringsInserts {
 
     @Param({"KEYS_STRING_100_000", "KEYS_STRING_1_000_000", "KEYS_STRING_10_000_000"})
-    private StringsSources numberOfInserts;
+    private StringsSourceTypes numberOfInserts;
 
-    @Param({"HashMap", "OALinearProbingMap", "OARobinHoodMap", "OAPyPerturbMap"})
+    @Param({"LProbMap", "LProbBinsMap", "LProbRadarMap", "RobinHoodMap", "PerturbMap", "HashMap"})
     private MapTypes mapClass;
 
     private Map testedMap;

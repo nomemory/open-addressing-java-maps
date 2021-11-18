@@ -1,23 +1,31 @@
 package net.andreinc.neatmaps;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 import static java.lang.String.format;
 
-public class OARobinHoodMap<K, V> implements Map<K,V> {
+public class PerturbMap<K, V> implements Map<K,V> {
 
     private static final double DEFAULT_MAX_LOAD_FACTOR = 0.6;
     private static final double DEFAULT_MIN_LOAD_FACTOR = DEFAULT_MAX_LOAD_FACTOR / 4;
     private static final int DEFAULT_MAP_CAPACITY_POW_2 = 6;
+    private static final int SHIFTER = 5;
 
     private int size = 0;
     private int tombstones = 0;
     private int capPow2 = DEFAULT_MAP_CAPACITY_POW_2;
-    private Entry<K, V> buckets[] = new Entry[1 << DEFAULT_MAP_CAPACITY_POW_2];
+
+    private LProbEntry<K, V> buckets[] = new LProbEntry[1<< DEFAULT_MAP_CAPACITY_POW_2];
+
+    public PerturbMap() {
+    }
 
     // INTERNAL METHODS
 
-    private static final int hash(final Object obj) {
+    private static final int hash32(final Object obj) {
         int h = obj.hashCode();
         h ^= h >> 16;
         h *= 0x3243f6a9;
@@ -27,8 +35,8 @@ public class OARobinHoodMap<K, V> implements Map<K,V> {
 
     protected final void reHashElements(int capModifier) {
         this.capPow2 +=capModifier;
-        Entry<K, V>[] oldBuckets = this.buckets;
-        this.buckets = new Entry[1 << capPow2];
+        LProbEntry<K, V>[] oldBuckets = this.buckets;
+        this.buckets = new LProbEntry[1 << capPow2];
         this.size = 0;
         this.tombstones = 0;
         for (int i = 0; i < oldBuckets.length; ++i) {
@@ -64,14 +72,14 @@ public class OARobinHoodMap<K, V> implements Map<K,V> {
 
     @Override
     public boolean containsKey(Object key) {
-        return get(key) != null;
+        return get(key)!=null;
     }
 
     @Override
     public boolean containsValue(Object value) {
-        for (int i = 0; i < buckets.length; i++) {
-            if (null != buckets[i]) {
-                if (value.equals(buckets[i].value)) {
+        for(int i = 0; i < buckets.length; i++) {
+            if (null!=buckets[i]) {
+                if (value.equals(buckets[i].getValue())) {
                     return true;
                 }
             }
@@ -84,79 +92,74 @@ public class OARobinHoodMap<K, V> implements Map<K,V> {
         if (null==key) {
             throw new IllegalArgumentException("Map doesn't support null keys");
         }
-        int hash = hash(key);
+        int hash = hash32(key);
         int idx = hash & (buckets.length-1);
-        if (buckets[idx]==null) {
+        if (null == buckets[idx]) {
             return null;
         }
+        int perturb = hash;
         do {
             if (buckets[idx].hash == hash && key.equals(buckets[idx].key)) {
                 return buckets[idx].value;
             }
-            idx++;
-            if (idx==buckets.length) idx = 0;
-        } while(null!=buckets[idx]);
+            idx = 5 * idx + 1 + perturb;
+            perturb>>= SHIFTER;
+            idx = idx & (buckets.length-1);
+        } while (null != buckets[idx]);
         return null;
     }
 
     protected V put(K key, V value, int hash) {
-        if (null==key) {
-            throw new IllegalArgumentException("Map doesn't support null keys");
-        }
         increaseCapacity();
-        K cKey = key;
-        V cVal = value;
-        int cHash = hash;
-        V old = null;
-        int probing = 0;
-        int idx = hash & (buckets.length - 1);
-        while (true){
-            if (null == buckets[idx]) {
-                buckets[idx] = new Entry<>(cKey, cVal, cHash, probing);
-                this.size++;
-                break;
-            } else if (hash == buckets[idx].hash && key.equals(buckets[idx].key)) {
-                old = buckets[idx].value;
-                buckets[idx].value = value;
-                buckets[idx].dist = probing;
-                break;
-            } else if (probing > buckets[idx].dist) {
-                K tmpKey;
-                V tmpVal;
-                int tmpHash;
-                int tmpDist;
-                tmpHash = buckets[idx].hash;
-                tmpVal = buckets[idx].value;
-                tmpDist = buckets[idx].dist;
-                tmpKey = buckets[idx].key;
-                buckets[idx].hash = cHash;
-                buckets[idx].value = cVal;
-                buckets[idx].key = cKey;
-                buckets[idx].dist = probing;
-                cHash = tmpHash;
-                cVal = tmpVal;
-                cKey = tmpKey;
-                probing = tmpDist;
+        int idx = hash & (buckets.length-1);
+        int perturb = hash;
+        while(true) {
+            if (buckets[idx] == null) {
+                // It's a free spot
+                buckets[idx] = new LProbEntry<>(key, value, hash);
+                size++;
+                return null;
             }
-            probing++;
-            idx++;
-            if (idx == buckets.length) idx = 0;
+            else if (buckets[idx].key == null) {
+                // It's a tombstone
+                buckets[idx].key = key;
+                buckets[idx].value = value;
+                buckets[idx].hash = hash;
+            }
+            else if (buckets[idx].hash == hash && key.equals(buckets[idx].key)) {
+                // We perform an update on the element
+                V ret;
+                ret = buckets[idx].value;
+                buckets[idx].key = key;
+                buckets[idx].hash = hash;
+                buckets[idx].value = value;
+                return ret;
+            }
+            idx = 5 * idx + 1 + perturb;
+            perturb>>= SHIFTER;
+            idx = idx & (buckets.length-1);
         }
-        return old;
     }
 
     @Override
     public V put(K key, V value) {
-        return put(key, value, hash(key));
+        if (null==key) {
+            throw new IllegalArgumentException("Map doesn't support null keys");
+        }
+        return put(key, value, hash32(key));
     }
 
     @Override
     public V remove(Object key) {
-        int hash = hash(key);
-        int idx = hash & (buckets.length - 1);
-        if (buckets[idx]==null) {
+        if (null==key) {
+            throw new IllegalArgumentException("Map doesn't support null keys");
+        }
+        int hash = hash32(key);
+        int idx = hash & (buckets.length-1);
+        if (null==buckets[idx]) {
             return null;
         }
+        int perturb = hash;
         do {
             if (buckets[idx].hash == hash && key.equals(buckets[idx].key)) {
                 V oldVal = buckets[idx].value;
@@ -167,8 +170,9 @@ public class OARobinHoodMap<K, V> implements Map<K,V> {
                 size--;
                 return oldVal;
             }
-            idx++;
-            if (idx == buckets.length) idx = 0;
+            idx = 5 * idx + 1 + perturb;
+            perturb>>= SHIFTER;
+            idx = idx & (buckets.length-1);
         } while (null != buckets[idx]);
         decreaseCapacity();
         return null;
@@ -176,21 +180,21 @@ public class OARobinHoodMap<K, V> implements Map<K,V> {
 
     @Override
     public void putAll(Map<? extends K, ? extends V> m) {
-        for (var e : m.entrySet()) {
+        for(var e : m.entrySet()) {
             put(e.getKey(), e.getValue());
         }
     }
 
     @Override
     public void clear() {
-        buckets = new Entry[1 << DEFAULT_MAP_CAPACITY_POW_2];
+        buckets = new LProbEntry[1<<DEFAULT_MAP_CAPACITY_POW_2];
     }
 
     @Override
     public Set<K> keySet() {
         HashSet<K> result = new HashSet<>();
-        for (int i = 0; i < buckets.length; i++) {
-            if (buckets[i] != null) {
+        for(int i = 0; i < buckets.length; i++) {
+            if (buckets[i]!=null) {
                 result.add(buckets[i].key);
             }
         }
@@ -200,8 +204,8 @@ public class OARobinHoodMap<K, V> implements Map<K,V> {
     @Override
     public Collection<V> values() {
         HashSet<V> result = new HashSet<>();
-        for (int i = 0; i < buckets.length; i++) {
-            if (buckets[i] != null) {
+        for(int i = 0; i < buckets.length; i++) {
+            if (buckets[i]!=null) {
                 result.add(buckets[i].value);
             }
         }
@@ -211,8 +215,8 @@ public class OARobinHoodMap<K, V> implements Map<K,V> {
     @Override
     public Set<Map.Entry<K, V>> entrySet() {
         HashSet<Map.Entry<K, V>> result = new HashSet<>();
-        for (int i = 0; i < buckets.length; i++) {
-            if (buckets[i] != null) {
+        for(int i = 0; i < buckets.length; i++) {
+            if (buckets[i]!=null) {
                 result.add(buckets[i]);
             }
         }
@@ -222,32 +226,31 @@ public class OARobinHoodMap<K, V> implements Map<K,V> {
     @Override
     public String toString() {
         StringBuilder buff = new StringBuilder();
-        for (int i = 0; i < buckets.length; ++i) {
+        for(int i = 0; i < buckets.length; ++i) {
             buff.append(format("bucket[%d] = ", i));
             if (null == buckets[i]) {
                 buff.append("NULL\n");
-            } else if (buckets[i].key == null) {
+            }
+            else if (buckets[i].key==null) {
                 buff.append("TOMBSTONE\n");
             } else {
-                buff.append(format(" {hash=%d, key=%s, value=%s dist=%d}\n",
-                        buckets[i].hash, buckets[i].key, buckets[i].value, buckets[i].dist));
+                buff.append(format(" {hash=%d, key=%s, value=%s }\n",
+                        buckets[i].hash, buckets[i].key, buckets[i].value));
             }
         }
         return buff.toString();
     }
 
-    public static class Entry<K, V> implements Map.Entry<K, V> {
+    public static class LProbEntry<K, V> implements Map.Entry<K, V> {
 
         private K key;
         private V value;
         private int hash;
-        private int dist;
 
-        public Entry(K key, V val, int hash, int dist) {
+        public LProbEntry(K key, V val, int hash) {
             this.key = key;
             this.value = val;
             this.hash = hash;
-            this.dist = dist;
         }
 
         @Override
@@ -256,7 +259,6 @@ public class OARobinHoodMap<K, V> implements Map<K,V> {
                     "key=" + key +
                     ", val=" + value +
                     ", hash=" + hash +
-                    ", dist=" + dist +
                     '}';
         }
 

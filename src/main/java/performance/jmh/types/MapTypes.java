@@ -1,8 +1,6 @@
-package performance.jmh.model;
+package performance.jmh.types;
 
 import net.andreinc.neatmaps.*;
-import net.andreinc.neatmaps.drafts.OACkooSAMap_draft;
-import net.andreinc.neatmaps.drafts.OALinearProbingRadarMap_draft;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -11,9 +9,11 @@ import java.util.function.Supplier;
 public enum MapTypes {
 
     HashMap(() -> new HashMap<>()),
-    OALinearProbingMap(OALinearProbingMap::new),
-    OARobinHoodMap(OARobinHoodMap::new),
-    OAPyPerturbMap(OAPyPerturbMap::new);
+    LProbMap(LProbMap::new),
+    LProbBinsMap(LProbBinsMap::new),
+    LProbRadarMap(LProbRadarMap::new),
+    RobinHoodMap(RobinHoodMap::new),
+    PerturbMap(PerturbMap::new);
 
     MapTypes(Supplier<? extends Map> supplier) {
         this.supplier = supplier;
