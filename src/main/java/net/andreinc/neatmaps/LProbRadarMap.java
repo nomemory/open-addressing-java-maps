@@ -9,7 +9,7 @@ import static java.lang.String.format;
 
 public class LProbRadarMap<K, V> implements Map<K,V> {
 
-    private static final double DEFAULT_MAX_LOAD_FACTOR = 0.6;
+    private static final double DEFAULT_MAX_LOAD_FACTOR = 0.8;
     private static final int DEFAULT_MAP_CAPACITY_POW_2 = 6;
     private static final int DEFAULT_MAX_PROBING_POW_2 = 5;
     private static final short DEFAULT_MAX_PROBING = 1 << DEFAULT_MAX_PROBING_POW_2;
@@ -249,8 +249,14 @@ public class LProbRadarMap<K, V> implements Map<K,V> {
             else if (buckets[i].key==null) {
                 buff.append("TOMBSTONE\n");
             } else {
-                buff.append(format(" {hash=%d, key=%s, value=%s, radar=%s }\n",
-                        buckets[i].hash, buckets[i].key, buckets[i].val, toBinary(radar[i], 32)));
+                buff.append(
+                        format(" {hash=%d, key=%s, value=%s, radar=%s, base=%d }\n",
+                                buckets[i].hash,
+                                buckets[i].key,
+                                buckets[i].val,
+                                toBinary(radar[i], 32),
+                                buckets[i].hash & (buckets.length-1)
+                        ));
             }
         }
         return buff.toString();

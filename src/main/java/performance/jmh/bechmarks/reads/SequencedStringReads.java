@@ -17,9 +17,9 @@ import static net.andreinc.mockneat.unit.text.Strings.strings;
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Benchmark)
-@Fork(value = 2, jvmArgs = {"-Xms6G", "-Xmx16G"})
-@Warmup(iterations = 1, time = 10)
-@Measurement(iterations = 4, time = 10)
+@Fork(value = 3, jvmArgs = {"-Xms6G", "-Xmx16G"})
+@Warmup(iterations = 2, time = 5)
+@Measurement(iterations = 4, time = 5)
 public class SequencedStringReads {
 
     @Param({"SEQUENCED_KEYS_10_000", "SEQUENCED_KEYS_100_000", "SEQUENCED_KEYS_1_000_000", "SEQUENCED_KEYS_10_000_000"})
