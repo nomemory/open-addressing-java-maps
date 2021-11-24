@@ -10,10 +10,12 @@ public enum MapTypes {
 
     HashMap(() -> new HashMap<>()),
     LProbMap(LProbMap::new),
+    LProbSOAMap(LProbSOAMap::new),
     LProbBinsMap(LProbBinsMap::new),
     LProbRadarMap(LProbRadarMap::new),
     RobinHoodMap(RobinHoodMap::new),
     PerturbMap(PerturbMap::new);
+
 
     MapTypes(Supplier<? extends Map> supplier) {
         this.supplier = supplier;

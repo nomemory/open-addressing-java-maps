@@ -18,15 +18,15 @@ import static net.andreinc.mockneat.unit.text.Strings.strings;
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Benchmark)
-@Fork(value = 3, jvmArgs = {"-Xms6G", "-Xmx16G"})
-@Warmup(iterations = 2, time = 5)
-@Measurement(iterations = 4, time = 5)
+@Fork(value = 2, jvmArgs = {"-Xms6G", "-Xmx16G"})
+@Warmup(iterations = 1, time = 5)
+@Measurement(iterations = 3, time = 5)
 public class RandomStringsReads {
 
     @Param({"KEYS_STRING_1_000", "KEYS_STRING_10_000", "KEYS_STRING_100_000", "KEYS_STRING_1_000_000", "KEYS_STRING_10_000_000"})
     private StringsSourceTypes input;
 
-    @Param({"LProbMap", "LProbBinsMap", "LProbRadarMap", "RobinHoodMap", "PerturbMap", "HashMap"})
+    @Param({"LProbMap", "LProbSOAMap", "LProbBinsMap", "LProbRadarMap", "RobinHoodMap", "PerturbMap", "HashMap"})
     private MapTypes mapClass;
 
     private Map testedMap;
@@ -38,7 +38,7 @@ public class RandomStringsReads {
         testedMap = mapClass.getSupplier().get();
         keys = input.getData();
         keys.forEach(k -> {
-            testedMap.put(k, null);
+            testedMap.put(k, k);
         });
         keysWithMisses =
                 probabilities(String.class)
