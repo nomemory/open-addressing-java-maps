@@ -141,6 +141,8 @@ public class LProbRadarMap<K, V> implements Map<K,V> {
                 buckets[idx].val = value;
                 buckets[idx].hash = hash;
                 radar[base] |= (1 << probing);
+                size++;
+                tombstones--;
             }
             else if (buckets[idx].hash == hash && key.equals(buckets[idx].key)) {
                 // We perform an update on the element

@@ -115,6 +115,14 @@ public class RobinHoodMap<K, V> implements Map<K,V> {
                 buckets[idx] = new Entry<>(cKey, cVal, cHash, probing);
                 this.size++;
                 break;
+            } else if (buckets[idx].key == null) {
+                buckets[idx].key = key;
+                buckets[idx].value = value;
+                buckets[idx].hash = hash;
+                buckets[idx].dist = probing;
+                size++;
+                tombstones--;
+                break;
             } else if (hash == buckets[idx].hash && key.equals(buckets[idx].key)) {
                 old = buckets[idx].value;
                 buckets[idx].value = value;

@@ -125,6 +125,8 @@ public class PerturbMap<K, V> implements Map<K,V> {
                 buckets[idx].key = key;
                 buckets[idx].value = value;
                 buckets[idx].hash = hash;
+                size++;
+                tombstones--;
             }
             else if (buckets[idx].hash == hash && key.equals(buckets[idx].key)) {
                 // We perform an update on the element

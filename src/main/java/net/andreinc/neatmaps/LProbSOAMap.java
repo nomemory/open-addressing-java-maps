@@ -125,6 +125,8 @@ public class LProbSOAMap<K, V> implements Map<K,V> {
                 bucketsV[idx] = value;
                 bucketsH[idx] = hash;
                 size++;
+                if (hash==1)
+                    tombstones--;
                 // No value was updated so we return null
                 return null;
             }

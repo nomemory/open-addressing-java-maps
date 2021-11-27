@@ -124,6 +124,7 @@ public class LProbMap<K, V> implements Map<K,V> {
                 buckets[idx].value = value;
                 buckets[idx].hash = hash;
                 size++;
+                tombstones--;
                 // No value was updated so we return null
                 return null;
             }
